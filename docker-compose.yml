@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # This service defines your backend application
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - ".:/src"
+    environment:
+      # Use the correct service name and replicaSet parameter for Prisma
+      DATABASE_URL: mongodb://mongo:27017/locate_app?replicaSet=rs0
+    depends_on:
+      mongo:
+        condition: service_started
+
+  # This service defines your MongoDB database
+  mongo:
+    image: mongo:6.0
+    container_name: backend-mongo-1
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    # This command starts MongoDB as a replica set with a single node
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    # This healthcheck simply pings the database to check if it's up
+    healthcheck:
+      test: test $$(echo 'db.runCommand("ping").ok' | mongosh --port 27017 --quiet) -eq 1
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  mongo_data: {}

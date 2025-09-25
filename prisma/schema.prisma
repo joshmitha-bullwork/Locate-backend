@@ -1,0 +1,41 @@
+// This is your Prisma schema file, which is a blueprint for your database.
+// It defines the database connection and the data models for your application.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url = env("DATABASE_URL")
+}
+model User {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  name        String?
+  email       String    @unique
+  phoneNumber String?
+  isVerified  Boolean   @default(false)
+  otp         String?
+  otpExpiresAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  items       Item[]
+}
+
+model Item {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  itemType    ItemType
+  itemName    String
+  description String
+  location    String
+  contact     String?
+  imageURL    String?
+  createdAt   DateTime @default(now())
+  postedBy    User     @relation(fields: [postedById], references: [id])
+  postedById  String   @db.ObjectId
+}
+
+enum ItemType {
+  lost
+  found
+}
