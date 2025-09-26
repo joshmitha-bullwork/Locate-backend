@@ -61,7 +61,7 @@ exports.login = async (req, res) => {
     res.cookie('temp-token', tempToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'Lax',
+      sameSite: 'None', // CORRECTED: Allows cross-site cookie
       maxAge: 10 * 60 * 1000,
     });
 
@@ -89,15 +89,21 @@ exports.verifyOtp = async (req, res) => {
       return res.status(400).json({ message: 'Invalid or expired OTP.' });
     }
     
-    res.clearCookie('temp-token');
+    // CORRECTED: Clear the temporary cookie and set the new session cookie
+    res.clearCookie('temp-token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'None', // Ensure you use 'None' here as well
+    });
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '2h' });
-     res.cookie('token', token, {
+    res.cookie('token', token, {
       httpOnly: true,
-      secure: false, // Keep this as false for local development
-      sameSite: 'Lax', // Change this back from 'None' to 'Lax'
-      maxAge: 120 * 60 * 1000,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'None', // Ensure you use 'None' here as well
+      maxAge: 2 * 60 * 60 * 1000,
     });
+
     await prisma.user.update({
       where: { email },
       data: { isVerified: true, otp: null, otpExpiresAt: null },
@@ -152,6 +158,10 @@ exports.getProfile = async (req, res) => {
 };
 
 exports.logout = (req, res) => {
-  res.clearCookie('token');
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'None',
+  });
   res.status(200).json({ message: 'Logged out successfully.' });
 };
