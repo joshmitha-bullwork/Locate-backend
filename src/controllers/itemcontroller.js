@@ -1,12 +1,12 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const fs = require('fs'); // For file system operations (deleting a file if needed)
+const fs = require('fs');
 
+// Your other exports (createItem, getRecentItems, getAllItems) remain the same...
 exports.createItem = async (req, res) => {
   const { itemType, itemName, description, location, contact } = req.body;
   const postedById = req.user.id;
   
-  // Check for any file upload errors from Multer
   if (req.fileValidationError) {
       return res.status(400).json({ error: req.fileValidationError });
   }
@@ -15,7 +15,6 @@ exports.createItem = async (req, res) => {
 
   if (!itemType || !itemName || !description || !location || !contact) {
     if (req.file && req.file.path) {
-        // Clean up the uploaded file if other required fields are missing
         fs.unlink(req.file.path, (err) => {
             if (err) console.error('Error deleting file:', err);
         });
@@ -39,54 +38,12 @@ exports.createItem = async (req, res) => {
     res.status(201).json(newItem);
   } catch (error) {
     console.error('Error creating item:', error);
-    // If the database operation fails, delete the uploaded file
     if (req.file && req.file.path) {
         fs.unlink(req.file.path, (err) => {
             if (err) console.error('Error deleting file after DB failure:', err);
         });
     }
     res.status(500).json({ error: 'Server error' });
-  }
-};
-
-exports.getAllItems = async (req, res) => {
-  try {
-    const items = await prisma.item.findMany({
-      include: {
-        postedBy: {
-          select: {
-            name: true,
-            email: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-    res.status(200).json(items);
-  } catch (error) {
-    console.error('Get All Items Error:', error);
-    res.status(500).json({ error: 'Failed to retrieve items.' });
-  }
-};
-
-exports.getUserItems = async (req, res) => {
-  const userId = req.user.id;
-  try {
-    const userItems = await prisma.item.findMany({
-      where: { postedById: userId },
-      include: {
-        postedBy: {
-          select: {
-            name: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-    res.status(200).json(userItems);
-  } catch (error) {
-    console.error('Get User Items Error:', error);
-    res.status(500).json({ error: 'Failed to retrieve your items.' });
   }
 };
 
@@ -108,5 +65,74 @@ exports.getRecentItems = async (req, res) => {
   } catch (error) {
     console.error('Get Recent Items Error:', error);
     res.status(500).json({ error: 'Failed to retrieve recent items.' });
+  }
+};
+
+exports.getAllItems = async (req, res) => {
+  const { skip, take } = req.query; 
+  const parsedSkip = parseInt(skip, 10) || 0; 
+  const parsedTake = parseInt(take, 10) || 3; 
+
+  try {
+    const items = await prisma.item.findMany({
+      skip: parsedSkip,
+      take: parsedTake,
+      include: {
+        postedBy: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const totalItemsCount = await prisma.item.count(); 
+
+    res.status(200).json({ 
+        items,
+        totalItemsCount
+    });
+  } catch (error) {
+    console.error('Get All Items Error:', error);
+    res.status(500).json({ error: 'Failed to retrieve items.' });
+  }
+};
+
+// ** Modified `getUserItems` endpoint to handle pagination. **
+exports.getUserItems = async (req, res) => {
+  const userId = req.user.id;
+  const { skip, take } = req.query; 
+  const parsedSkip = parseInt(skip, 10) || 0;
+  const parsedTake = parseInt(take, 10) || 3; // Default to 3 items per load
+
+  try {
+    const userItems = await prisma.item.findMany({
+      skip: parsedSkip,
+      take: parsedTake,
+      where: { postedById: userId },
+      include: {
+        postedBy: {
+          select: {
+            name: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    // Get the total count of items for this specific user
+    const totalUserItemsCount = await prisma.item.count({
+      where: { postedById: userId },
+    });
+    
+    res.status(200).json({
+      items: userItems,
+      totalItemsCount: totalUserItemsCount
+    });
+  } catch (error) {
+    console.error('Get User Items Error:', error);
+    res.status(500).json({ error: 'Failed to retrieve your items.' });
   }
 };
