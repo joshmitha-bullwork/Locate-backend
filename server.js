@@ -26,7 +26,6 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Check if the request's origin is in the list of allowed origins
     if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
       callback(null, true);
     } else {
@@ -37,14 +36,20 @@ const corsOptions = {
 };
 // --- END OF UPDATED SECTION ---
 
+// Add this line to explicitly handle OPTIONS preflight requests
+app.options('*', cors(corsOptions));
+
+// Middleware
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 app.use('/uploads', express.static(uploadsDir));
 
+// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/items', itemRoutes);
 
+// Server startup
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, async () => {
   try {
