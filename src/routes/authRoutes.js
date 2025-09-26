@@ -1,4 +1,3 @@
-// routes/authRoutes.js
 const express = require('express');
 const { register, login, verifyOtp, checkAuthStatus, logout, getProfile } = require('../controllers/authController');
 const { protect } = require('../middlewares/authMiddleware'); // Make sure this path is correct
