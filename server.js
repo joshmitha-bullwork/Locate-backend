@@ -3,7 +3,7 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const path = require('path');
-const fs = require('fs'); // <--- ADD THIS LINE
+const fs = require('fs');
 const authRoutes = require('./src/routes/authRoutes');
 const itemRoutes = require('./src/routes/itemroutes');
 const { PrismaClient } = require('@prisma/client');
@@ -11,23 +11,36 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const app = express();
 
-// --- ADD THIS SECTION ---
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir);
     console.log('Created uploads directory.');
 }
-// --- END OF NEW SECTION ---
+
+// --- UPDATED CORS OPTIONS ---
+// Allows requests from the deployed frontend and localhost during development.
+const allowedOrigins = [
+  'http://localhost:3000',
+  process.env.CLIENT_URL, // This is your deployed frontend's URL
+];
 
 const corsOptions = {
-  origin: 'http://localhost:3000',
+  origin: (origin, callback) => {
+    // Check if the request's origin is in the list of allowed origins
+    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 };
+// --- END OF UPDATED SECTION ---
 
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
-app.use('/uploads', express.static(uploadsDir)); // Use the new variable here
+app.use('/uploads', express.static(uploadsDir));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/items', itemRoutes);
