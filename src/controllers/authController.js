@@ -57,12 +57,12 @@ exports.login = async (req, res) => {
       text: `Your OTP is ${otp}. It is valid for 10 minutes.`,
     });
     
-    const tempToken = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: '10m' });
+    const tempToken = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: '1d' });
     res.cookie('temp-token', tempToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'None', // CORRECTED: Allows cross-site cookie
-      maxAge: 10 * 60 * 1000,
+      maxAge: 24 * 60 * 1000,
     });
 
     res.status(200).json({ message: 'OTP sent to your email.' });
